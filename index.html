@@ -5,6 +5,115 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lord of the rings accessibility quiz</title>
     <link rel="stylesheet" href="css/styles.css" />
+  <!-- EMAX Image Optimizer -->
+<script>
+(function() {
+  var PROXY_URL = 'https://img.caspianalmerud.se/img/3';
+  var STATUS_URL = 'https://img.caspianalmerud.se/api/status/3';
+  var SITE_DOMAIN = 'accessiblesauron.netlify.app';
+  var TIMEOUT_MS = 2e3;
+  var MAX_FAILURES = 3;
+  var FAILURE_KEY = 'emax_failures';
+
+  var failures = parseInt(sessionStorage.getItem(FAILURE_KEY) || '0', 10);
+  if (failures >= MAX_FAILURES) return;
+
+  var statusCheck = new XMLHttpRequest();
+  statusCheck.open('GET', STATUS_URL, true);
+  statusCheck.timeout = TIMEOUT_MS;
+  statusCheck.onload = function() {
+    if (statusCheck.status === 200) {
+      rewriteImages();
+      observeDOM();
+    }
+  };
+  statusCheck.onerror = statusCheck.ontimeout = function() {
+    sessionStorage.setItem(FAILURE_KEY, String(failures + 1));
+  };
+  statusCheck.send();
+
+  function rewriteImages() {
+    document.querySelectorAll('img').forEach(function(img) {
+      rewriteSrc(img, 'src');
+      rewriteSrc(img, 'data-src');
+      rewriteSrcset(img, 'srcset');
+      rewriteSrcset(img, 'data-srcset');
+    });
+
+    document.querySelectorAll('source').forEach(function(source) {
+      rewriteSrcset(source, 'srcset');
+    });
+  }
+
+  function rewriteSrc(el, attr) {
+    var val = el.getAttribute(attr);
+    if (!val) return;
+    var rewritten = rewriteUrl(val);
+    if (rewritten !== val) el.setAttribute(attr, rewritten);
+  }
+
+  function rewriteSrcset(el, attr) {
+    var val = el.getAttribute(attr);
+    if (!val) return;
+    var parts = val.split(',').map(function(entry) {
+      var pieces = entry.trim().split(/\s+/);
+      var widthHint = extractWidthDescriptor(pieces[1]);
+      pieces[0] = rewriteUrl(pieces[0], widthHint);
+      return pieces.join(' ');
+    });
+    el.setAttribute(attr, parts.join(', '));
+  }
+
+  function extractWidthDescriptor(descriptor) {
+    if (!descriptor) return null;
+    var match = descriptor.match(/^(\d+)w$/i);
+    return match ? match[1] : null;
+  }
+
+  function rewriteUrl(url, widthHint) {
+    if (!url) return url;
+    try {
+      var parsed = new URL(url, window.location.origin);
+      if (parsed.hostname !== SITE_DOMAIN) return url;
+      if (!/\.(jpe?g|png|gif)(\?.*)?$/i.test(parsed.pathname)) return url;
+      var proxied = PROXY_URL + parsed.pathname + parsed.search;
+      if (widthHint) {
+        proxied += (parsed.search ? '&' : '?') + 'w=' + widthHint;
+      }
+      return proxied;
+    } catch (e) {
+      return url;
+    }
+  }
+
+  function observeDOM() {
+    if (!window.MutationObserver) return;
+    var observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        mutation.addedNodes.forEach(function(node) {
+          if (node.nodeType === 1) {
+            if (node.tagName === 'IMG') {
+              rewriteSrc(node, 'src');
+              rewriteSrc(node, 'data-src');
+              rewriteSrcset(node, 'srcset');
+              rewriteSrcset(node, 'data-srcset');
+            }
+            var imgs = node.querySelectorAll ? node.querySelectorAll('img') : [];
+            imgs.forEach(function(img) {
+              rewriteSrc(img, 'src');
+              rewriteSrc(img, 'data-src');
+              rewriteSrcset(img, 'srcset');
+              rewriteSrcset(img, 'data-srcset');
+            });
+          }
+        });
+      });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+})();
+</script>
+<!-- /EMAX Image Optimizer -->
   </head>
   <body>
     <a href="#main" class="skip-link">Skip to main content</a>
